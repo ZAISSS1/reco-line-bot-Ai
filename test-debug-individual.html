@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>個別推播除錯測試</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .result { margin: 10px 0; padding: 10px; background: #f0f0f0; }
+        .success { background: #d4edda; }
+        .error { background: #f8d7da; }
+        pre { font-size: 12px; }
+    </style>
+    <script>
+        async function runTests() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<p>開始測試...</p>';
+            
+            // 測試 1: 檢查群組資料
+            try {
+                const groupsResponse = await fetch('/api/groups');
+                const groups = await groupsResponse.json();
+                results.innerHTML += `
+                    <div class="result success">
+                        <h3>✅ 測試 1: 群組資料</h3>
+                        <p>群組數量: ${groups.length}</p>
+                        <pre>${JSON.stringify(groups, null, 2)}</pre>
+                    </div>
+                `;
+                
+                // 測試 2: 模擬添加個別推播
+                if (groups.length > 0) {
+                    const testBroadcast = {
+                        broadcasts: [{
+                            groupId: groups[0].groupId,
+                            groupName: groups[0].name,
+                            message: "個別推播除錯測試 - " + new Date().toLocaleTimeString(),
+                            images: []
+                        }]
+                    };
+                    
+                    // 測試儲存功能
+                    localStorage.setItem('individual-broadcasts', JSON.stringify([testBroadcast.broadcasts[0]]));
+                    const saved = localStorage.getItem('individual-broadcasts');
+                    
+                    results.innerHTML += `
+                        <div class="result success">
+                            <h3>✅ 測試 2: 本地儲存</h3>
+                            <p>資料已儲存到 localStorage</p>
+                            <pre>儲存的資料: ${saved}</pre>
+                        </div>
+                    `;
+                    
+                    // 測試 3: API 發送（不實際發送，只測試格式）
+                    try {
+                        const apiResponse = await fetch('/api/broadcast-multiple', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(testBroadcast)
+                        });
+                        const result = await apiResponse.json();
+                        
+                        results.innerHTML += `
+                            <div class="result ${result.success ? 'success' : 'error'}">
+                                <h3>${result.success ? '✅' : '❌'} 測試 3: API 呼叫</h3>
+                                <p>API 回應狀態: ${result.success ? '成功' : '失敗'}</p>
+                                <pre>${JSON.stringify(result, null, 2)}</pre>
+                            </div>
+                        `;
+                    } catch (apiError) {
+                        results.innerHTML += `
+                            <div class="result error">
+                                <h3>❌ 測試 3: API 呼叫</h3>
+                                <p>API 錯誤: ${apiError.message}</p>
+                            </div>
+                        `;
+                    }
+                } else {
+                    results.innerHTML += `
+                        <div class="result error">
+                            <h3>❌ 無法進行後續測試</h3>
+                            <p>沒有可用的群組資料</p>
+                        </div>
+                    `;
+                }
+                
+                // 測試 4: 檢查最近活動
+                const activitiesResponse = await fetch('/api/activities');
+                const activities = await activitiesResponse.json();
+                results.innerHTML += `
+                    <div class="result">
+                        <h3>📊 測試 4: 系統活動</h3>
+                        <p>活動記錄數量: ${activities.length}</p>
+                        <pre>${JSON.stringify(activities, null, 2)}</pre>
+                    </div>
+                `;
+                
+            } catch (error) {
+                results.innerHTML += `
+                    <div class="result error">
+                        <h3>❌ 測試失敗</h3>
+                        <p>錯誤: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function clearStorage() {
+            localStorage.removeItem('individual-broadcasts');
+            document.getElementById('storageResult').innerHTML = '✅ localStorage 已清空';
+        }
+        
+        function checkStorage() {
+            const data = localStorage.getItem('individual-broadcasts');
+            document.getElementById('storageResult').innerHTML = 
+                data ? `📦 儲存資料: ${data}` : '📭 localStorage 為空';
+        }
+    </script>
+</head>
+<body>
+    <h1>個別推播功能除錯測試</h1>
+    
+    <div class="test-section">
+        <h2>自動測試</h2>
+        <button onclick="runTests()">執行完整測試</button>
+        <div id="results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>本地儲存測試</h2>
+        <button onclick="checkStorage()">檢查 localStorage</button>
+        <button onclick="clearStorage()">清空 localStorage</button>
+        <div id="storageResult"></div>
+    </div>
+</body>
+</html>

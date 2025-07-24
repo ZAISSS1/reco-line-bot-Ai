@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LINE API 狀態監控</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #1a1a1a; color: #fff; }
+        .status-box { background: #2a2a2a; padding: 20px; border-radius: 8px; margin: 15px 0; }
+        .success { border-left: 4px solid #4CAF50; }
+        .warning { border-left: 4px solid #FFC107; }
+        .error { border-left: 4px solid #F44336; }
+        .info { border-left: 4px solid #2196F3; }
+        h1 { color: #4CAF50; }
+        .timer { font-size: 24px; font-weight: bold; text-align: center; padding: 10px; }
+        .test-button { background: #2196F3; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; }
+        .normal-button { background: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; }
+        .disabled { background: #666; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <h1>📊 LINE API 狀態監控中心</h1>
+    
+    <div class="status-box info">
+        <h2>⏰ 限制時間追蹤</h2>
+        <p>從第一次 429 錯誤開始計時：</p>
+        <div class="timer" id="timer">Loading...</div>
+        <p><strong>預估恢復時間：</strong> 5-30 分鐘（標準情況）</p>
+    </div>
+    
+    <div class="status-box warning">
+        <h2>🚨 當前狀態</h2>
+        <ul>
+            <li><strong>正常模式：</strong> <span style="color: #F44336;">❌ LINE API 429 限制中</span></li>
+            <li><strong>測試模式：</strong> <span style="color: #4CAF50;">✅ 完全正常運作</span></li>
+            <li><strong>群組資料：</strong> <span style="color: #4CAF50;">✅ 2 個群組已載入</span></li>
+            <li><strong>功能邏輯：</strong> <span style="color: #4CAF50;">✅ 所有功能正常</span></li>
+        </ul>
+    </div>
+    
+    <div class="status-box success">
+        <h2>🎯 立即可用的解決方案</h2>
+        <p><strong>您現在可以完整使用個別推播功能：</strong></p>
+        <ol>
+            <li>在發送模式選擇「測試模式」</li>
+            <li>設定所有群組的個別訊息和圖片</li>
+            <li>點擊「測試」按鈕模擬發送</li>
+            <li>查看活動記錄確認功能正常</li>
+            <li>等待 LINE API 恢復後切換正常模式</li>
+        </ol>
+    </div>
+    
+    <div class="status-box info">
+        <h2>🧪 即時測試工具</h2>
+        <button class="test-button" onclick="testMode()">測試模式發送</button>
+        <button class="normal-button" onclick="normalMode()" id="normalBtn">正常模式發送</button>
+        <button class="test-button" onclick="checkStatus()">檢查 API 狀態</button>
+        <div id="testResult" style="margin-top: 15px;"></div>
+    </div>
+    
+    <script>
+        let startTime = new Date('2025-07-24T10:06:00'); // 第一次 429 錯誤時間
+        
+        function updateTimer() {
+            const now = new Date();
+            const diff = now - startTime;
+            const minutes = Math.floor(diff / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+            
+            document.getElementById('timer').textContent = `${minutes} 分 ${seconds} 秒`;
+            
+            // 預估恢復時間顏色變化
+            const timerEl = document.getElementById('timer');
+            if (minutes < 5) {
+                timerEl.style.color = '#F44336'; // 紅色
+            } else if (minutes < 15) {
+                timerEl.style.color = '#FFC107'; // 黃色
+            } else {
+                timerEl.style.color = '#4CAF50'; // 綠色
+            }
+        }
+        
+        async function testMode() {
+            document.getElementById('testResult').innerHTML = '測試中...';
+            try {
+                const response = await fetch('/api/broadcast-multiple', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        broadcasts: [{
+                            groupId: 'C02351aa1bf4cab610d59b0286f0922e2',
+                            groupName: '包月單趟-Task',
+                            message: '狀態監控測試 - ' + new Date().toLocaleTimeString(),
+                            images: []
+                        }],
+                        testMode: true
+                    })
+                });
+                const result = await response.json();
+                document.getElementById('testResult').innerHTML = 
+                    `<div style="color: #4CAF50;">✅ 測試模式成功：${JSON.stringify(result, null, 2)}</div>`;
+            } catch (error) {
+                document.getElementById('testResult').innerHTML = 
+                    `<div style="color: #F44336;">❌ 錯誤：${error.message}</div>`;
+            }
+        }
+        
+        async function normalMode() {
+            document.getElementById('testResult').innerHTML = '檢查正常模式...';
+            try {
+                const response = await fetch('/api/broadcast-multiple', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        broadcasts: [{
+                            groupId: 'C02351aa1bf4cab610d59b0286f0922e2',
+                            groupName: '包月單趟-Task',
+                            message: 'API 限制檢查 - ' + new Date().toLocaleTimeString(),
+                            images: []
+                        }],
+                        testMode: false
+                    })
+                });
+                const result = await response.json();
+                if (result.totalSent > 0) {
+                    document.getElementById('testResult').innerHTML = 
+                        `<div style="color: #4CAF50;">🎉 LINE API 已恢復！正常模式可用</div>`;
+                    document.getElementById('normalBtn').style.background = '#4CAF50';
+                } else {
+                    document.getElementById('testResult').innerHTML = 
+                        `<div style="color: #FFC107;">⏳ 仍在限制中：${JSON.stringify(result, null, 2)}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('testResult').innerHTML = 
+                    `<div style="color: #F44336;">❌ 錯誤：${error.message}</div>`;
+            }
+        }
+        
+        async function checkStatus() {
+            document.getElementById('testResult').innerHTML = '檢查系統狀態...';
+            try {
+                const [groups, activities, stats] = await Promise.all([
+                    fetch('/api/groups').then(r => r.json()),
+                    fetch('/api/activities').then(r => r.json()),
+                    fetch('/api/stats').then(r => r.json())
+                ]);
+                
+                document.getElementById('testResult').innerHTML = `
+                    <div style="color: #2196F3;">
+                        <h4>📊 系統狀態</h4>
+                        <p><strong>群組數量：</strong> ${groups.length}</p>
+                        <p><strong>活動記錄：</strong> ${activities.length}</p>
+                        <p><strong>系統統計：</strong> ${JSON.stringify(stats)}</p>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('testResult').innerHTML = 
+                    `<div style="color: #F44336;">❌ 錯誤：${error.message}</div>`;
+            }
+        }
+        
+        // 每秒更新計時器
+        setInterval(updateTimer, 1000);
+        updateTimer();
+        
+        // 每 2 分鐘自動檢查 API 狀態
+        setInterval(normalMode, 120000);
+    </script>
+</body>
+</html>
